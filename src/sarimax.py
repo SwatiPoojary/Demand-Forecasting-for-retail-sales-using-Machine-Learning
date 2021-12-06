@@ -7,12 +7,16 @@ import numpy as np
 import matplotlib.pyplot as plt
 import statsmodels.api as sm
 import matplotlib
+from pylab import rcParams
+from sklearn.metrics import mean_absolute_percentage_error
+from sklearn.metrics import mean_absolute_error
+from sklearn.metrics import mean_squared_error
+from datetime import datetime
 
 warnings.filterwarnings("ignore")
 
-
-data = pd.read_csv('DataSortedPoundsData.csv');
-
+data = pd.read_csv('..\data\DataSortedPoundsData.csv');
+data = data.sort_values(['Year','Month'], ascending=[True,True])
 data_values = data["Cost"].values
 mid = round(len(data_values) / 2)
 data_values_1, data_values_2 = data_values[0:mid], data_values[mid:]
@@ -48,49 +52,42 @@ plt.show()
 # d = 1
 
 # PACF plot of 1st differenced series
-# plt.rcParams.update({'figure.figsize':(9,3), 'figure.dpi':120})
-fig, axes = plt.subplots(1, 2)
-axes[0].plot(data.Cost.diff());
-axes[0].set_title('1st Differencing PACF')
-plot_pacf(data.Cost.diff().dropna(), ax=axes[1])
+fig, ax = plt.subplots(1, 2)
+ax[0].plot(data.Cost.diff());
+ax[0].set_title('1st Differencing PACF')
+plot_pacf(data.Cost.diff().dropna(), ax=ax[1])
 plt.show()
 
 #  p = 2
-fig, axes = plt.subplots(1, 2)
-axes[0].plot(data.Cost.diff());
-axes[0].set_title('1st Differencing ACF')
-plot_acf(data.Cost.diff().dropna(), ax=axes[1])
+fig, ax = plt.subplots(1, 2)
+ax[0].plot(data.Cost.diff());
+ax[0].set_title('1st Differencing ACF')
+plot_acf(data.Cost.diff().dropna(), ax=ax[1])
 plt.show()
 
 #  q = 2
 
-plt.style.use('fivethirtyeight')
-
-
-
-matplotlib.rcParams['axes.labelsize'] = 14
-matplotlib.rcParams['xtick.labelsize'] = 12
-matplotlib.rcParams['ytick.labelsize'] = 12
-matplotlib.rcParams['text.color'] = 'k'
-data = data.sort_values('OrderDate')
+# plt.style.use('fivethirtyeight')
+# matplotlib.rcParams['axes.labelsize'] = 14
+# matplotlib.rcParams['xtick.labelsize'] = 12
+# matplotlib.rcParams['ytick.labelsize'] = 12
+# matplotlib.rcParams['text.color'] = 'k'
 data.isnull().sum()
 data['OrderDate']= pd.to_datetime(data['OrderDate'])
 
-data.reset_index().groupby(pd.Grouper(freq='1D', key='OrderDate')).mean()
+data.reset_index().groupby(pd.Grouper(freq='MS', key='OrderDate')).mean()
 data = data.set_index('OrderDate')
 print(data.index)
 y = data['Cost']
 
-
-y_plt = data['Cost'].resample('MS').mean()
-print(y_plt.shape)
+print(data)
+y_plt = data['Cost'];
+print("printing y plt")
+print(y_plt)
 
 y_plt = y_plt.dropna()
 y_plt = y_plt.drop_duplicates(keep='first', inplace=False)
-# y_plt.plot(figsize=(15, 6))
-# plt.show()
 
-from pylab import rcParams
 rcParams['figure.figsize'] = 18,8
 
 # p = d = q = range(0,2)
@@ -99,12 +96,7 @@ p =  q = range(0,3)
 
 pdq = list(itertools.product(p, d, q))
 seasonal_pdq = [(x[0], x[1], x[2], 12) for x in list(itertools.product(p, d, q))]
-#
-# print('Examples of parameter combinations for Seasonal ARIMA...')
-# print('SARIMAX: {} x {}'.format(pdq[1], seasonal_pdq[1]))
-# print('SARIMAX: {} x {}'.format(pdq[1], seasonal_pdq[2]))
-# print('SARIMAX: {} x {}'.format(pdq[2], seasonal_pdq[3]))
-# print('SARIMAX: {} x {}'.format(pdq[2], seasonal_pdq[4]))
+
 listARima = []
 arima_dict = {};
 for param in pdq:
@@ -125,10 +117,8 @@ for param in pdq:
         except:
             continue
 print(min(listARima))
-print(arima_dict[min(listARima)][0])
 param1 = arima_dict[min(listARima)][0]
 param2 = arima_dict[min(listARima)][1]
-# ARIMA(0, 1, 0)x(3, 2, 1, 12)12 - AIC:10.0
 
 sarima_model = sm.tsa.statespace.SARIMAX(y_plt,
                                 order=param1,
@@ -144,7 +134,7 @@ plt.show()
 # print(results.summary())
 prediction = sarima_result.get_prediction(start=pd.to_datetime('2015-01-01'), dynamic=False)
 prediction_ci = prediction.conf_int()
-# print(pred1_ci)
+print(prediction_ci)
 
 ax1 = y_plt['1986':].plot(label='observed')
 # print(y_plt['2010':])
@@ -158,35 +148,34 @@ plt.legend()
 plt.show()
 
 y_forecasted = prediction.predicted_mean
-
 y_actual = y_plt['2015-01-01':]
-# print(y_truth.dtype)
 
+mse = mean_squared_error(y_actual, y_forecasted)
+mae = mean_absolute_error(y_actual, y_forecasted)
+mape = mean_absolute_percentage_error(y_actual, y_forecasted)
 
-mse = ((y_forecasted - y_actual) ** 2).mean()
+print('The mean Squared Error of our forecasts for SARIMAX is {}'.format(round(mse,2)))
+print('The Root Mean Squared Error of our forecasts for SARIMAX is {}'.format(round(np.sqrt(mse), 2)))
+print('The Mean absolute error of our forecasts for SARIMAX is {}'.format(round(mae,2)))
+print('The Mean absolute percentage error of our forecasts for SARIMAX is {}'.format(round(mape,4)))
 
-# acc = mod.score()
-# # from sklearn.metrics import accuracy_score
-# # acc = accuracy_score(y_truth,y_forecasted)
-# print(acc)
-
-print('The mean Squared Error of our forecasts is {}'.format(round(mse,2)))
-print('The Root Mean Squared Error of our forecasts is {}'.format(round(np.sqrt(mse), 2)))
-mape = np.mean(np.abs(y_forecasted - y_actual)/np.abs(y_actual))
-print(mape)
-from sklearn.metrics import mean_absolute_percentage_error
-print(mean_absolute_percentage_error(y_actual, y_forecasted))
-
-pred_forecast = results.get_forecast(steps = 10)
+datetime_object = datetime.strptime('2021-01-10', '%Y-%d-%m')
+print(datetime_object)
+pred_forecast = sarima_result.get_forecast(steps = 1)
 # pred_uc = results.get_forecast(steps=100)
+print(pred_forecast.summary_frame(alpha=0.10))
+
 pred_forecast_ci = pred_forecast.conf_int()
-ax2 = y_plt[:].plot(label='observed', figsize=(14, 7))
-pred_forecast.predicted_mean.plot(ax=ax2, label='Forecast')
-ax2.fill_between(pred_forecast_ci.index,
-                pred_forecast_ci.iloc[:, 0],
-                pred_forecast_ci.iloc[:, 1], color='k', alpha=.25)
-ax2.set_xlabel('Date')
-ax2.set_ylabel('Cost')
-plt.legend()
-plt.show()
+print(pred_forecast_ci)
+print(format(round(pred_forecast.predicted_mean,2)))
+# ax2 = y_plt['1986':].plot(label='observed', figsize=(14, 7))
+# # pred_forecast.predicted_mean.plot(ax=ax2, label='Forecast')
+# # ax2.fill_between(pred_forecast_ci.index,
+# #                 pred_forecast_ci.iloc[:, 0],
+# #                 pred_forecast_ci.iloc[:, 1], color='k', alpha=.25)
+# ax2.set_xlabel('Date')
+# ax2.set_ylabel('Cost')
+# plt.legend()
+# plt.show()
+
 

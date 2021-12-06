@@ -1,44 +1,38 @@
-from pandas import read_csv
-from pandas import datetime
-from pandas import DataFrame
-from pandas import concat
+import pandas as pd
+from sklearn.metrics import mean_absolute_error
 from matplotlib import pyplot
-from sklearn.metrics import mean_squared_error, mean_absolute_percentage_error
+from sklearn.metrics import mean_absolute_percentage_error
 
 
-def parser(x):
-	return datetime.strptime('190'+x, '%Y-%m')
-
-series = read_csv('DataSortedPoundsData.csv')
-# Create lagged dataset
+data = pd.read_csv('..\data\DataSortedPoundsData.csv');
+data = data.sort_values(['Year','Month'], ascending=[True,True])
 cols_poundsdata = ['Date','Year','Month','OrderDate']
-series.drop(cols_poundsdata, axis=1, inplace=True)
+data.drop(cols_poundsdata, axis=1, inplace=True)
+values = data.values
 
-values = DataFrame(series.values)
-dataframe = concat([values.shift(1), values], axis=1)
-dataframe.columns = ['t-1', 't+1']
-print(dataframe.head(5))
+data['lag1'] = data['Cost'].shift(1)
+
+data.dropna(inplace=True)
 
 # split into train and test sets
-X = dataframe.values
-train_size = int(len(X) * 0.66)
-train, test = X[1:train_size], X[train_size:]
-train_X, train_y = train[:,0], train[:,1]
-test_X, test_y = test[:,0], test[:,1]
+X = data.values
+
+train, test = X[:-36, :], X[-36:, :]
+train_X, train_y = train[:, :-1], train[:, -1]
+test_X, test_y = test[:, :-1], test[:, -1]
 
 # persistence model
 def model_persistence(x):
 	return x
 
-# walk-forward validation
 predictions = list()
 for x in test_X:
 	yhat = model_persistence(x)
 	predictions.append(yhat)
-test_score = mean_squared_error(test_y, predictions)
-print('Test MSE: %.3f' % test_score)
+mae = mean_absolute_error(test[:, -1], predictions)
 mape = mean_absolute_percentage_error(test[:, -1], predictions)
-print('MAPE: %.3f' % mape)
+print('The mean absolute Error of our forecasts for RandomForest is {}'.format(round(mae,2)))
+print('The Mean absolute percentage error of our forecasts for SARIMAX is {}'.format(round(mape,4)))
 
 # plot predictions and expected results
 pyplot.plot(train_y)

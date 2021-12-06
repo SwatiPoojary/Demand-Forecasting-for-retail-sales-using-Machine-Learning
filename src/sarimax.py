@@ -6,7 +6,6 @@ import itertools
 import numpy as np
 import matplotlib.pyplot as plt
 import statsmodels.api as sm
-import matplotlib
 from pylab import rcParams
 from sklearn.metrics import mean_absolute_percentage_error
 from sklearn.metrics import mean_absolute_error
@@ -26,7 +25,7 @@ print('mean1=%f, mean2=%f' % (mean1, mean2))
 print('variance1=%f, variance2=%f' % (var1, var2))
 
 test_results = adfuller(data["Cost"].dropna())
-print('ADF Statistic: %f' % test_results[0])
+print('ADF Statistic on original data: %f' % test_results[0])
 print('p value: %f' % test_results[1])
 if(test_results[1] < 0.05):
     print("The data set used is a Stationary Data")
@@ -40,10 +39,14 @@ ax[0, 0].plot(data.Cost);
 ax[0, 0].set_title('Original Data')
 plot_acf(data.Cost, ax=ax[0, 1])
 
-
 test_results = adfuller(data["Cost"].diff().dropna())
 print('ADF Statistic after 1 differencing: %f' % test_results[0])
 print('p value after 1 differencing: %f' % test_results[1])
+if(test_results[1] < 0.05):
+    print("The data set used is a Stationary Data")
+else:
+    print("The data set used is a Non-Stationary Data")
+
 # 1st Differencing
 ax[1, 0].plot(data.Cost.diff());
 ax[1, 0].set_title('1st Order Differencing')
@@ -65,25 +68,15 @@ ax[0].set_title('1st Differencing ACF')
 plot_acf(data.Cost.diff().dropna(), ax=ax[1])
 plt.show()
 
-#  q = 2
-
-# plt.style.use('fivethirtyeight')
-# matplotlib.rcParams['axes.labelsize'] = 14
-# matplotlib.rcParams['xtick.labelsize'] = 12
-# matplotlib.rcParams['ytick.labelsize'] = 12
-# matplotlib.rcParams['text.color'] = 'k'
 data.isnull().sum()
 data['OrderDate']= pd.to_datetime(data['OrderDate'])
 
 data.reset_index().groupby(pd.Grouper(freq='MS', key='OrderDate')).mean()
 data = data.set_index('OrderDate')
-print(data.index)
+data.drop(data.tail(1).index, inplace=True)
 y = data['Cost']
 
-print(data)
 y_plt = data['Cost'];
-print("printing y plt")
-print(y_plt)
 
 y_plt = y_plt.dropna()
 y_plt = y_plt.drop_duplicates(keep='first', inplace=False)
@@ -119,6 +112,8 @@ for param in pdq:
 print(min(listARima))
 param1 = arima_dict[min(listARima)][0]
 param2 = arima_dict[min(listARima)][1]
+print(param1)
+print(param2)
 
 sarima_model = sm.tsa.statespace.SARIMAX(y_plt,
                                 order=param1,
@@ -136,14 +131,13 @@ prediction = sarima_result.get_prediction(start=pd.to_datetime('2015-01-01'), dy
 prediction_ci = prediction.conf_int()
 print(prediction_ci)
 
-ax1 = y_plt['1986':].plot(label='observed')
-# print(y_plt['2010':])
-prediction.predicted_mean.plot(ax=ax1, label='One-step ahead Forecast', alpha=.7, figsize=(14, 7))
+ax1 = y_plt['1986':].plot(label='Actual')
+prediction.predicted_mean.plot(ax=ax1, label='Predicted', alpha=.7, figsize=(14, 7))
 ax1.fill_between(prediction_ci.index,
                 prediction_ci.iloc[:, 0],
                 prediction_ci.iloc[:, 1], color='k', alpha=.2)
-ax1.set_xlabel('Date')
-ax1.set_ylabel('Sales')
+ax1.set_xlabel('Year')
+ax1.set_ylabel('Sales Price(£ thousands)')
 plt.legend()
 plt.show()
 
@@ -160,19 +154,8 @@ print('The Mean absolute error of our forecasts for SARIMAX is {}'.format(round(
 print('The Mean absolute percentage error of our forecasts for SARIMAX is {}'.format(round(mape,4)))
 
 pred_forecast = sarima_result.get_forecast(steps = 1)
-# pred_uc = results.get_forecast(steps=100)
 print(pred_forecast.summary_frame(alpha=0.10))
 
 pred_forecast_ci = pred_forecast.conf_int()
-print(format(round(pred_forecast.predicted_mean,2)))
-# ax2 = y_plt['1986':].plot(label='observed', figsize=(14, 7))
-# # pred_forecast.predicted_mean.plot(ax=ax2, label='Forecast')
-# # ax2.fill_between(pred_forecast_ci.index,
-# #                 pred_forecast_ci.iloc[:, 0],
-# #                 pred_forecast_ci.iloc[:, 1], color='k', alpha=.25)
-# ax2.set_xlabel('Date')
-# ax2.set_ylabel('Cost')
-# plt.legend()
-# plt.show()
-
+print("Forecast for next month (Oct 2021): ",format(round(pred_forecast.predicted_mean,2)))
 

@@ -3,9 +3,14 @@ import pandas as pd
 from statsmodels.graphics.tsaplots import plot_acf, plot_pacf
 import numpy as np
 import matplotlib.pyplot as plt
-import matplotlib
 import itertools
+import warnings
 from statsmodels.tsa.arima_model import ARIMA
+from sklearn.metrics import mean_absolute_percentage_error
+from sklearn.metrics import mean_absolute_error
+from sklearn.metrics import mean_squared_error
+
+warnings.filterwarnings("ignore")
 
 data = pd.read_csv('..\data\ProcessedData.csv');
 data = data.sort_values(['Year', 'Month'], ascending=[True, True])
@@ -65,7 +70,7 @@ data['OrderDate'] = pd.to_datetime(data['OrderDate'])
 
 data.reset_index().groupby(pd.Grouper(freq='MS', key='OrderDate')).mean()
 data = data.set_index('OrderDate')
-print(data.index)
+data.drop(data.tail(1).index, inplace=True)
 
 d = range(1, 2)
 p = q = range(0, 3)
@@ -75,20 +80,17 @@ listARima = []
 arima_dict = {};
 for param in pdq:
     model = ARIMA(data.values, order=param)
-    # enforce_stationarity = False,
     results = model.fit(disp=0)
     paramList = [];
     paramList.append(param)
-    print(results.aic)
     listARima.append(results.aic)
     arima_dict[results.aic] = paramList
     print('ARIMA{} - AIC:{}'.format(param, results.aic))
 
 param = arima_dict[min(listARima)][0]
+print(min(listARima))
 print(param)
 
-
-# 1,1,2 ARIMA Model
 model = ARIMA(data.values, order=param)
 model_fit = model.fit(disp=0)
 print(model_fit.summary())
@@ -106,18 +108,18 @@ plt.show()
 
 # Create Training and Test
 data = data["Cost"]
-train = data[:400]
-test = data[401:]
+train = data[:350]
+test = data[351:]
 
 # Build Model
-model = ARIMA(train, order=param)
-fitted = model.fit(disp=-1)
+model_train = ARIMA(train, order=param)
+fitted = model_train.fit(disp=0)
 
 # Forecast
-fc, se, conf = fitted.forecast(28, alpha=0.05)  # 95% conf
+forecast, se, conf = fitted.forecast(len(test), alpha=0.05)  # 95% conf
 
 # Make as pandas series
-fc_series = pd.Series(fc, index=test.index)
+forecast_series = pd.Series(forecast, index=test.index)
 lower_series = pd.Series(conf[:, 0], index=test.index)
 upper_series = pd.Series(conf[:, 1], index=test.index)
 
@@ -125,13 +127,26 @@ upper_series = pd.Series(conf[:, 1], index=test.index)
 plt.figure(figsize=(12, 5), dpi=100)
 plt.plot(train, label='training')
 plt.plot(test, label='actual')
-plt.plot(fc_series, label='forecast')
+plt.plot(forecast_series, label='forecast')
 plt.fill_between(lower_series.index, lower_series, upper_series,
                  color='k', alpha=.15)
 plt.title('Forecast vs Actuals')
+plt.xlabel('Year')
+plt.ylabel('Sales Price(£ thousands)')
 plt.legend(loc='upper left', fontsize=8)
 plt.show()
 
 # Calculating Metrics
-mape = np.mean(np.abs(fc - test.values) / np.abs(test.values))  # MAPE
-print("Mean Absolute Percentage Error is %f" % mape)
+mse = mean_squared_error(test.values, forecast)
+mae = mean_absolute_error(test.values, forecast)
+mape = mean_absolute_percentage_error(test.values, forecast)
+
+print('The mean Squared Error of our forecasts for ARIMA is {}'.format(round(mse,2)))
+print('The Root Mean Squared Error of our forecasts for ARIMA is {}'.format(round(np.sqrt(mse), 2)))
+print('The Mean absolute error of our forecasts for ARIMA is {}'.format(round(mae,2)))
+print('The Mean absolute percentage error of our forecasts for ARIMA is {}'.format(round(mape,4)))
+
+model = ARIMA(data.values, order=param)
+model_fit = model.fit(disp=0)
+forecast, se, conf = model_fit.forecast(1, alpha=0.05)  # 95% conf
+print("Forecast for next month (Oct 2021): ",forecast)

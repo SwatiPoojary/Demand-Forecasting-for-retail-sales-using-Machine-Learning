@@ -40,4 +40,3 @@ cols=["Day","Month","Year"]
 data['OrderDate'] = data[cols].apply(lambda x: '/'.join(x.values.astype(str)), axis="columns")
 print(data)
 data.to_csv('..\data\ProcessedData.csv', index = False)
-# print(pd.to_datetime((data.Year*10000+data.Month*100+1).apply(str),format='%Y%m%d'))

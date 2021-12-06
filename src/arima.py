@@ -7,7 +7,7 @@ import matplotlib
 import itertools
 from statsmodels.tsa.arima_model import ARIMA
 
-data = pd.read_csv('..\data\DataSortedPoundsData.csv');
+data = pd.read_csv('..\data\ProcessedData.csv');
 data = data.sort_values(['Year', 'Month'], ascending=[True, True])
 data_values = data["Cost"].values
 mid = round(len(data_values) / 2)
@@ -59,7 +59,7 @@ plt.show()
 #  q = 2
 
 data.isnull().sum()
-cols_poundsdata = ['Date','Year','Month']
+cols_poundsdata = ['Date','Year','Month_Name','Month','Day']
 data.drop(cols_poundsdata, axis=1, inplace=True)
 data['OrderDate'] = pd.to_datetime(data['OrderDate'])
 

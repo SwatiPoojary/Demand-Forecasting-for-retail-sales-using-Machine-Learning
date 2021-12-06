@@ -15,7 +15,7 @@ from datetime import datetime
 
 warnings.filterwarnings("ignore")
 
-data = pd.read_csv('..\data\DataSortedPoundsData.csv');
+data = pd.read_csv('..\data\ProcessedData.csv');
 data = data.sort_values(['Year','Month'], ascending=[True,True])
 data_values = data["Cost"].values
 mid = round(len(data_values) / 2)
@@ -159,14 +159,11 @@ print('The Root Mean Squared Error of our forecasts for SARIMAX is {}'.format(ro
 print('The Mean absolute error of our forecasts for SARIMAX is {}'.format(round(mae,2)))
 print('The Mean absolute percentage error of our forecasts for SARIMAX is {}'.format(round(mape,4)))
 
-datetime_object = datetime.strptime('2021-01-10', '%Y-%d-%m')
-print(datetime_object)
 pred_forecast = sarima_result.get_forecast(steps = 1)
 # pred_uc = results.get_forecast(steps=100)
 print(pred_forecast.summary_frame(alpha=0.10))
 
 pred_forecast_ci = pred_forecast.conf_int()
-print(pred_forecast_ci)
 print(format(round(pred_forecast.predicted_mean,2)))
 # ax2 = y_plt['1986':].plot(label='observed', figsize=(14, 7))
 # # pred_forecast.predicted_mean.plot(ax=ax2, label='Forecast')

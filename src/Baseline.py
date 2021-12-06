@@ -3,10 +3,9 @@ from sklearn.metrics import mean_absolute_error
 from matplotlib import pyplot
 from sklearn.metrics import mean_absolute_percentage_error
 
-
-data = pd.read_csv('..\data\DataSortedPoundsData.csv');
+data = pd.read_csv('..\data\ProcessedData.csv');
 data = data.sort_values(['Year','Month'], ascending=[True,True])
-cols_poundsdata = ['Date','Year','Month','OrderDate']
+cols_poundsdata = ['Date','Year','Month_Name','Month','Day','OrderDate']
 data.drop(cols_poundsdata, axis=1, inplace=True)
 values = data.values
 
